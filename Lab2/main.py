@@ -1,11 +1,17 @@
 import subprocess
 import click
 
-
 def do_command(command):
-    return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+    try:
+        return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+    except ValueError as e:
+        print(f"Can't execute command:\n{command}\nHost argument is porbably invalid")
+        exit(1)
+    except OSError as e:
+        print(f"Can't execute command due to unexpected os error:\n{command}\nHost argument is probably invalid")
+        exit(1)
 
-def try_packet_size(host, packet, verbose):
+def try_packet_size(host, packet, verbose) -> bool:
     print(f"Now trying to ping {host} with {packet} size payload")
     command = f"ping -M do -c 1 -s {packet} {host}"
     response = do_command(command)
@@ -25,11 +31,22 @@ def try_packet_size(host, packet, verbose):
     print()
     return answer
 
+def validate_host(host) -> bool:
+    try:
+        return (os.system(f"ping -c 1 {host}") == 0)
+    except OSError as e:
+        print("Can't check if host is alive due to unexpected os error\nHost argument is probably invalid")
 
 @click.command()
 @click.option("--host", required=True, type=str)
 @click.option("--verbose", required=False, type=bool)
 def main(host, verbose=False):
+    if len(host.split()) > 1:
+        print("Host should not contain whitespaces")
+        exit(1)
+    if not validate_host(host):
+        print("Host is invalid or unreachable")
+        exit(1)
     starting_size = 1 
     while try_packet_size(host, starting_size, verbose):
         starting_size *= 2
