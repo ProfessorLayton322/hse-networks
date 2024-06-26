@@ -1,5 +1,6 @@
 import subprocess
 import click
+import os
 
 def do_command(command):
     try:
